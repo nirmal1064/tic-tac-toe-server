@@ -1,4 +1,3 @@
-//NOSONAR
 import { createServer } from "http";
 import { Server } from "socket.io";
 import app from "./app";
@@ -17,7 +16,7 @@ import {
   REMATCH_SUCCESS,
   START_GAME
 } from "./constants";
-import { getRandomColour } from "./helpers";
+import { checkWinner, getRandomColour } from "./helpers";
 import {
   JoinRoomSuccessType,
   JoinRoomType,
@@ -29,8 +28,8 @@ import {
 
 const rooms = new Map<string, RoomType>();
 
-const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: "*" } });
+const server = createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
 const startGame = async (room: RoomType, currentIo: Server) => {
   const { users } = room;
@@ -42,31 +41,12 @@ const startGame = async (room: RoomType, currentIo: Server) => {
   currentIo.emit(START_GAME, room);
 };
 
-const checkWinner = (board: Array<"X" | "O" | null>): string | null => {
-  const winningCombinations = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6]
-  ];
-  for (let i of winningCombinations) {
-    const [a, b, c] = i;
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-      return board[a];
-    }
-  }
-  return null;
-};
-
 const handleMakeMove = (data: MakeMoveType) => {
   const { userId, idx, roomId } = data;
   const room = rooms.get(roomId);
   if (!room) return;
-  const { users, board, currentUser } = room;
+  const { users, board, currentUser, winner } = room;
+  if (winner) return;
   if (currentUser !== userId) return;
   if (board[idx] !== null) return;
   board[idx] = data.symbol;
@@ -79,6 +59,7 @@ const handleMakeMove = (data: MakeMoveType) => {
   io.to(roomId).emit(MADE_MOVE, room);
   const winnerSymbol = checkWinner(board);
   if (winnerSymbol) {
+    room.winner = winnerSymbol;
     io.to(roomId).emit(GAME_OVER, { winner: winnerSymbol, draw: false });
   }
   if (room.count === 9) {
@@ -135,8 +116,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on(REMATCH_RESPONSE, (data: RematchResponseType) => {
+    const { roomId } = data;
     if (data.rematch) {
-      const room = rooms.get(data.roomId);
+      const room = rooms.get(roomId);
       if (!room) return;
       const { users } = room;
       room.board = Array(9).fill(null);
@@ -156,9 +138,10 @@ io.on("connection", (socket) => {
       room.bgColor = getRandomColour();
       io.to(room.roomId).emit(REMATCH_SUCCESS, room);
     } else {
+      rooms.delete(roomId);
       io.to(data.roomId).emit(REMATCH_FAILURE, "Opponent declined rematch");
     }
   });
 });
 
-export default httpServer;
+export default server;
