@@ -1,3 +1,4 @@
+//NOSONAR
 import { createServer } from "http";
 import { Server } from "socket.io";
 import app from "./app";
@@ -29,11 +30,7 @@ import {
 const rooms = new Map<string, RoomType>();
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*"
-  }
-});
+const io = new Server(httpServer, { cors: { origin: "*" } });
 
 const startGame = async (room: RoomType, currentIo: Server) => {
   const { users } = room;

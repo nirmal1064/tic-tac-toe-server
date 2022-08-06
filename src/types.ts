@@ -1,3 +1,5 @@
+import { Request } from "express";
+
 export interface ServerToClientEvents {
   noArg: () => void;
   basicEmit: (a: number, b: string, c: Buffer) => void;
@@ -63,3 +65,9 @@ export type GameOverType = {
 export type RematchType = { roomId: string };
 
 export type RematchResponseType = { roomId: string; rematch: boolean };
+
+export type AuthUserType = { username: string; password: string };
+
+export type CustomRequestType = Request & { userId: string };
+
+export type UserIdType = { id: string };
