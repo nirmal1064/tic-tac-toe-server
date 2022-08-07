@@ -14,7 +14,7 @@ export const verifyToken = (
   res: Response,
   next: NextFunction
 ) => {
-  const token = <string>req.headers["x-access-token"];
+  const token = <string>req.cookies.token;
   if (!token) return res.status(403).send({ auth: false, msg: "No token" });
   try {
     const decoded = jwt.verify(token, JWT_SECRET_KEY) as UserIdType;
@@ -23,6 +23,9 @@ export const verifyToken = (
     next();
   } catch (err: any) {
     console.error(err);
-    return res.status(401).json({ msg: `Invalid Token ${err.message}` });
+    return res
+      .status(401)
+      .clearCookie("token")
+      .json({ msg: `Invalid Token ${err.message}` });
   }
 };
